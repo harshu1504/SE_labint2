@@ -1,0 +1,25 @@
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: oltrs-deployment
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: oltrs
+
+  template:
+    metadata:
+      labels:
+        app: oltrs
+
+    spec:
+      containers:
+        - name: oltrs-container
+          image: harshitha15040815/oltrs:4
+          ports:
+            - containerPort: 8080
