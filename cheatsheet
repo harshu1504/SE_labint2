@@ -1,0 +1,705 @@
+# DEVOPS PRACTICAL EXAM – MASTER CHEAT SHEET
+
+## 1. DOCKER & DOCKER COMPOSE
+
+### A. Check Docker installation
+
+```cmd
+docker --version
+docker compose version
+docker info
+```
+
+### B. Important Docker commands
+
+```cmd
+docker images
+docker ps
+docker ps -a
+docker pull nginx
+docker run -d -p 8080:80 --name mycontainer nginx
+docker stop mycontainer
+docker start mycontainer
+docker restart mycontainer
+docker rm -f mycontainer
+docker logs mycontainer
+docker exec -it mycontainer sh
+```
+
+### C. Create docker-compose.yml
+
+```yaml
+services:
+  frontend:
+    image: nginx
+    ports:
+      - "8080:80"
+
+  backend:
+    image: nginx
+    ports:
+      - "8081:80"
+
+  database:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+```
+
+Save as `docker-compose.yml`.
+
+### D. Execute Compose commands
+
+```cmd
+docker compose up -d
+docker compose ps
+docker compose logs
+docker compose logs -f
+docker compose stop
+docker compose start
+docker compose restart
+docker compose down
+docker compose up --build -d
+docker compose stop backend
+```
+
+### E. Important differences
+
+| Command | Purpose |
+|---|---|
+| up -d | Create and start services |
+| stop | Stop containers |
+| start | Start existing containers |
+| down | Remove containers and default network |
+| restart | Restart services |
+| logs | Display logs |
+| ps | List services |
+
+---
+
+## 2. JENKINS
+
+### A. Check Jenkins
+
+Default port: `8080`
+
+Browser:
+
+```text
+http://localhost:8080
+```
+
+Check port in Windows CMD:
+
+```cmd
+netstat -ano | findstr :8080
+```
+
+Check Java:
+
+```cmd
+java -version
+```
+
+### B. Jenkins installation and configuration
+
+1. Install Java.
+2. Install Jenkins.
+3. Start Jenkins service.
+4. Open `http://localhost:8080`.
+5. Enter initial administrator password.
+6. Install suggested plugins.
+7. Create administrator account.
+8. Create a Pipeline job.
+
+### C. GitHub integration
+
+1. Create a GitHub repository.
+2. Open repository Settings → Webhooks.
+3. Add webhook:
+
+```text
+http://YOUR_JENKINS_URL/github-webhook/
+```
+
+4. In Jenkins → Configure → Build Triggers.
+5. Enable GitHub hook trigger for GITScm polling.
+
+### D. Sample Jenkinsfile
+
+Save as `Jenkinsfile` in your GitHub repository.
+
+```groovy
+pipeline {
+    agent any
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                git branch: 'main',
+                url: 'https://github.com/USERNAME/REPOSITORY.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                bat 'mvn clean package'
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                bat 'docker build -t username/myapp:latest .'
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
+                    bat 'echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
+                    bat 'docker push username/myapp:latest'
+                }
+            }
+        }
+
+    }
+
+    post {
+        success {
+            echo 'Build Successful'
+        }
+
+        failure {
+            echo 'Build Failed'
+        }
+    }
+}
+```
+
+Replace:
+- USERNAME with GitHub username.
+- REPOSITORY with repository name.
+- username with Docker Hub username.
+- Configure `dockerhub-creds` in Jenkins Credentials.
+
+Note: This example uses Windows agents. Use `sh` instead of `bat` for Linux agents.
+
+### E. Common Jenkins commands
+
+```cmd
+mvn clean package
+docker build -t myapp .
+docker images
+docker push username/myapp:latest
+```
+
+### F. Jenkins troubleshooting
+
+| Problem | Check |
+|---|---|
+| Jenkins not opening | Port 8080 and service |
+| GitHub not triggering | Webhook |
+| Maven build failed | Maven installation and pom.xml |
+| Docker build failed | Docker daemon and Dockerfile |
+| Docker push failed | Credentials |
+| Deployment failed | Console Output |
+
+---
+
+## 3. KUBERNETES / MINIKUBE
+
+### A. Check installation
+
+```cmd
+kubectl version --client
+minikube version
+docker --version
+```
+
+### B. Start Minikube
+
+Open PowerShell as Administrator if your installation requires elevated permissions.
+
+```powershell
+minikube start --driver=docker
+```
+
+Check status:
+
+```powershell
+minikube status
+kubectl get nodes
+```
+
+### C. Create deployment.yaml
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: myapp
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: myapp
+
+  template:
+    metadata:
+      labels:
+        app: myapp
+
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+```
+
+### D. Create service.yaml
+
+```yaml
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: myapp-service
+
+spec:
+  type: NodePort
+
+  selector:
+    app: myapp
+
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30080
+```
+
+### E. Execute Kubernetes commands
+
+```cmd
+kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
+
+kubectl get pods
+kubectl get deployments
+kubectl get services
+kubectl get all
+
+kubectl describe pod POD_NAME
+kubectl logs POD_NAME
+
+kubectl scale deployment myapp --replicas=4
+
+kubectl get pods --show-labels
+kubectl get endpoints myapp-service
+
+kubectl delete deployment myapp
+kubectl delete service myapp-service
+```
+
+### F. Access application
+
+```cmd
+minikube service myapp-service
+```
+
+Alternatively:
+
+```cmd
+kubectl port-forward service/myapp-service 8081:80
+```
+
+Open:
+
+```text
+http://localhost:8081
+```
+
+### G. Common Pod errors
+
+| Status | Meaning |
+|---|---|
+| Pending | Scheduling/resource problem |
+| CrashLoopBackOff | Container repeatedly crashes |
+| ImagePullBackOff | Image cannot be pulled |
+| Running | Container is running |
+| Error | Container execution failed |
+
+Troubleshooting:
+
+```cmd
+kubectl describe pod POD_NAME
+kubectl logs POD_NAME
+kubectl get events
+```
+
+---
+
+## 4. NAGIOS MONITORING
+
+Nagios Core is commonly installed on Ubuntu/Linux. Execute these commands on the Nagios server, not Windows CMD.
+
+### A. Check Nagios status
+
+```bash
+sudo systemctl status nagios
+```
+
+Start:
+
+```bash
+sudo systemctl start nagios
+```
+
+Restart:
+
+```bash
+sudo systemctl restart nagios
+```
+
+Enable at startup:
+
+```bash
+sudo systemctl enable nagios
+```
+
+### B. Open Nagios dashboard
+
+Default web interface:
+
+```text
+http://SERVER-IP/nagios
+```
+
+Login using configured Nagios web credentials.
+
+### C. Check configuration
+
+```bash
+sudo /usr/local/nagios/bin/nagios -v /usr/local/nagios/etc/nagios.cfg
+```
+
+Restart after valid configuration changes:
+
+```bash
+sudo systemctl restart nagios
+```
+
+### D. Important Nagios directories
+
+```text
+/usr/local/nagios/etc/
+/usr/local/nagios/etc/objects/
+/usr/local/nagios/libexec/
+/usr/local/nagios/var/
+```
+
+### E. NRPE monitoring
+
+On the monitored Linux machine, install NRPE and plugins using the package manager appropriate for the Linux distribution.
+
+For Ubuntu/Debian:
+
+```bash
+sudo apt update
+sudo apt install nagios-nrpe-server nagios-plugins
+```
+
+Check NRPE:
+
+```bash
+sudo systemctl status nagios-nrpe-server
+```
+
+Restart:
+
+```bash
+sudo systemctl restart nagios-nrpe-server
+```
+
+Default NRPE port: `5666`.
+
+Allow the Nagios server IP in the NRPE configuration, typically:
+
+```text
+allowed_hosts=127.0.0.1,NAGIOS_SERVER_IP
+```
+
+### F. Example NRPE command
+
+In the monitored host's NRPE configuration:
+
+```text
+command[check_root_disk]=/usr/lib/nagios/plugins/check_disk -w 20% -c 10% -p /
+```
+
+Plugin path can vary by distribution.
+
+From the Nagios server, test:
+
+```bash
+/usr/local/nagios/libexec/check_nrpe -H CLIENT_IP -c check_root_disk
+```
+
+Expected output resembles:
+
+```text
+DISK OK - free space: ...
+```
+
+If command is not defined:
+- Check `nrpe.cfg`.
+- Verify command name.
+- Verify plugin path.
+- Restart NRPE.
+- Verify port 5666 connectivity.
+
+### G. Useful monitoring commands
+
+```bash
+df -h
+free -m
+uptime
+top
+systemctl status nagios
+systemctl status nagios-nrpe-server
+```
+
+---
+
+## 5. AWS EC2
+
+### A. Launch an EC2 instance
+
+1. Open AWS Console.
+2. Search for EC2.
+3. Click Launch Instance.
+4. Enter instance name.
+5. Select Amazon Linux or Ubuntu AMI.
+6. Select instance type.
+7. Create/select key pair.
+8. Configure Security Group.
+9. Launch instance.
+
+### B. Security Group inbound rules
+
+| Type | Port | Source |
+|---|---:|---|
+| SSH | 22 | My IP |
+| HTTP | 80 | 0.0.0.0/0 |
+| HTTPS | 443 | 0.0.0.0/0 |
+| Custom TCP | 8080 | Appropriate trusted source |
+
+Do not expose SSH to everyone in production.
+
+### C. Connect through SSH
+
+On Windows PowerShell:
+
+```powershell
+ssh -i "mykey.pem" ec2-user@PUBLIC_IP
+```
+
+For Ubuntu:
+
+```powershell
+ssh -i "mykey.pem" ubuntu@PUBLIC_IP
+```
+
+If key permissions cause an error in Windows:
+
+```powershell
+icacls mykey.pem /inheritance:r
+icacls mykey.pem /grant:r "$($env:USERNAME):(R)"
+```
+
+### D. Install Apache on Amazon Linux
+
+```bash
+sudo dnf update -y
+sudo dnf install httpd -y
+sudo systemctl start httpd
+sudo systemctl enable httpd
+```
+
+Create a webpage:
+
+```bash
+echo "Welcome to AWS EC2" | sudo tee /var/www/html/index.html
+```
+
+Access:
+
+```text
+http://PUBLIC_IP
+```
+
+For Ubuntu, install Apache using:
+
+```bash
+sudo apt update
+sudo apt install apache2 -y
+sudo systemctl enable --now apache2
+```
+
+### E. Run application on port 8080
+
+Ensure the application listens on an externally reachable interface, such as `0.0.0.0`, and that the Security Group permits TCP 8080.
+
+Check:
+
+```bash
+sudo ss -tulnp | grep 8080
+```
+
+Access:
+
+```text
+http://PUBLIC_IP:8080
+```
+
+### F. Persistent storage – EBS
+
+Check disks:
+
+```bash
+lsblk
+```
+
+Create directory:
+
+```bash
+sudo mkdir /data
+```
+
+For a new, empty EBS volume only, format it:
+
+```bash
+sudo mkfs -t ext4 /dev/DEVICE
+```
+
+Mount it:
+
+```bash
+sudo mount /dev/DEVICE /data
+```
+
+Check:
+
+```bash
+df -h
+```
+
+Use the correct device name. Never format a volume containing existing data.
+
+### G. AWS important concepts
+
+| Concept | Purpose |
+|---|---|
+| EC2 | Virtual server |
+| AMI | Instance template |
+| Key Pair | SSH authentication |
+| Security Group | Instance-level virtual firewall |
+| EBS | Persistent block storage |
+| S3 | Object storage |
+| Elastic IP | Static public IPv4 |
+| VPC | Isolated virtual network |
+| Internet Gateway | Internet connectivity |
+| NAT Gateway | Outbound internet for private subnet resources |
+
+---
+
+# 6. GIT AND GITHUB – COMMON TO ALL TASKS
+
+### Push a project folder to GitHub
+
+```cmd
+cd path\to\project
+
+git init
+git add .
+git commit -m "Initial commit"
+
+git branch -M main
+
+git remote add origin https://github.com/USERNAME/REPOSITORY.git
+
+git push -u origin main
+```
+
+If remote already exists:
+
+```cmd
+git remote -v
+git remote set-url origin https://github.com/USERNAME/REPOSITORY.git
+git push -u origin main
+```
+
+### Update existing project
+
+```cmd
+git add .
+git commit -m "Updated project"
+git push
+```
+
+### Useful Git commands
+
+```cmd
+git status
+git log --oneline
+git branch
+git remote -v
+git pull
+```
+
+Never push `.env` files, passwords, private keys or access tokens.
+
+---
+
+# 7. LAST-MINUTE PRACTICAL REVISION
+
+| If the question asks... | Remember |
+|---|---|
+| Stop all Compose services | docker compose stop |
+| Remove Compose containers | docker compose down |
+| Build and run Compose | docker compose up -d |
+| Trigger Jenkins from GitHub | Webhook |
+| Build Maven application | mvn clean package |
+| Push Docker image | docker push |
+| Increase Kubernetes replicas | kubectl scale |
+| Expose Kubernetes application | Service / NodePort |
+| Troubleshoot Kubernetes Pod | kubectl describe pod |
+| Empty Service endpoints | Check selector and labels |
+| Check Nagios | systemctl status nagios |
+| Test NRPE | check_nrpe |
+| Connect to EC2 | ssh -i |
+| Open web application | Security Group port |
+| Static public IP | Elastic IP |
+| Persistent EC2 data | EBS |
+
+# 8. GOLDEN RULE FOR PRACTICAL EXAMS
+
+For every practical task, follow these five steps:
+
+1. **Check:** Verify whether the required software/service is installed and running.
+2. **Configure:** Create or edit the required configuration file.
+3. **Execute:** Run the required command.
+4. **Verify:** Check the output and service status.
+5. **Troubleshoot:** Inspect logs and errors if something fails.
+
+**Never assume a command worked just because it did not display an error. Always verify the result.**
